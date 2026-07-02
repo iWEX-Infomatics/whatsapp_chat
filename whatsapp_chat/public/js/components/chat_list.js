@@ -85,7 +85,7 @@ export default class ChatList {
         is_admin: this.is_admin,
         room: element.name,
         is_read: element.is_read,
-        room_name: element.contact_name,
+        room_name: element.display_name || element.contact_name,
         room_type: element.type,
         opposite_person_email: element.mobile_no,
       };
