@@ -1,8 +1,6 @@
 import frappe
 import mimetypes
 
-
-
 @frappe.whitelist()
 def get_all(room: str, user_no: str):
     """Get all the messages of a particular room
@@ -17,21 +15,25 @@ def get_all(room: str, user_no: str):
             when `to` <> '' then `to`
             else
             'Administrator'
-        end as sender_user_no,
+            end as sender_user_no,
         case
             when COALESCE(content_type, 'text') = 'text' then COALESCE(message, '')
             else COALESCE(attach, message, '')
-        end as content,
+            end as content,
         case
             when COALESCE(content_type, 'text') <> 'text' then message
             else NULL
-        end as caption,
-        COALESCE(content_type, 'text') as content_type
+            end as caption,
+        COALESCE(content_type, 'text') as content_type,
+        COALESCE(status, 'sent') as status,
+        case
+            when `to` <> '' then 'Outgoing'
+            else 'Incoming'
+            end as direction
         from `tabWhatsApp Message` where (`to` = %(user_no)s or `from` = %(user_no)s)
         AND COALESCE(message_type, '') <> 'Template'
         order by creation asc
-    """, {"user_no": user_no}, as_dict=True)
-
+        """, {"user_no": user_no}, as_dict=True)
 
 @frappe.whitelist()
 def mark_as_read(room):
@@ -44,9 +46,8 @@ def mark_as_read(room):
         # Send read receipts to WhatsApp if enabled
         send_whatsapp_read_receipts(room)
     except Exception:
-        pass  # Ignore concurrent update errors
+        pass # Ignore concurrent update errors
     return "ok"
-
 
 def send_whatsapp_read_receipts(room):
     """Send read receipts to WhatsApp for unread incoming messages."""
@@ -92,8 +93,6 @@ def send_whatsapp_read_receipts(room):
     except Exception as e:
         frappe.log_error(f"send_whatsapp_read_receipts error: {str(e)}", "WhatsApp Chat Read Receipt")
 
-
-
 @frappe.whitelist()
 def send(content, user, room, user_no, attachment=None):
     content_type = "text"
@@ -126,13 +125,11 @@ def send(content, user, room, user_no, attachment=None):
 
     return "ok"
 
-
 def last_message(doc, method):
     if doc.type == 'Outgoing':
         mobile_no = doc.to
     else:
         mobile_no = doc.get("from")
-
 
     contact_name = frappe.db.get_value("WhatsApp Contact", filters={"mobile_no": mobile_no})
     if contact_name:
