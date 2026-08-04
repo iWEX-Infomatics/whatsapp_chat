@@ -14,9 +14,10 @@ export default class ChatRoom {
 		this.chat_list = opts.chat_list;
 		this.profile = opts.element;
 		this.setup();
-		if (!this.profile.is_read) {
-			set_notification_count('increment');
-		}
+		// The badge is no longer seeded by counting rooms as they are built:
+		// ChatList asks the server once the list is up. Incrementing here
+		// double-counted whenever a room object was rebuilt for a chat that
+		// was already on the badge.
 	}
 
 	setup() {
@@ -72,11 +73,16 @@ export default class ChatRoom {
 	}
 
 	set_as_read() {
+		// Guarded exactly as set_as_unread() is. Without this, reading a room
+		// that was already read still decremented the badge, so the count
+		// drifted below the truth.
+		if (!this.profile.is_read) {
+			set_notification_count('decrement');
+		}
 		this.profile.is_read = 1;
 		this.$chat_room.find('.last-message').css('color', 'var(--text-muted)');
 		this.$chat_room.find('.chat-latest').hide();
 		this.$chat_room.removeClass('chat-room--unread');
-		set_notification_count('decrement');
 	}
 
 	set_last_message(message, date) {
